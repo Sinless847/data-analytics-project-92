@@ -1,6 +1,7 @@
 SELECT COUNT(*) AS customers_count --подсчитывает общее количество записей в таблице customers и выводит это число с псевдонимом customers_count--
 FROM customers;
 
+
 SELECT 
     e.first_name || ' ' || e.last_name AS seller, --объединяю имя и фамилию сотрудника в одно поле и даю псевданим--
     COUNT(s.sales_id) AS operations,--считаю кол-во сделок--
@@ -13,6 +14,7 @@ JOIN products p
 GROUP BY e.employee_id, e.first_name, e.last_name --проводим группировку--
 ORDER BY income DESC--проводим сортировку по убыванию дохода--
 LIMIT 10;--берем только 10 лучших продавцов--
+
 
 WITH seller_stats AS (--пишем подзапрос что бы посчитать статистику каждого продавца--
     SELECT 
@@ -48,3 +50,53 @@ JOIN products p
   ON s.product_id = p.product_id
 GROUP BY e.employee_id, e.first_name, e.last_name, TO_CHAR(s.sale_date, 'Day'), EXTRACT(DOW FROM s.sale_date)--проводим группировку--
 ORDER BY EXTRACT(DOW FROM s.sale_date), seller;--проводим сортировку по дню недели,а затем по имени--
+
+
+WITH age_groups AS (--создаем таблицу и присваиваем каждому клиенту категорию возраста--
+    SELECT
+        CASE
+            WHEN age BETWEEN 16 AND 25 THEN '16-25'
+            WHEN age BETWEEN 26 AND 40 THEN '26-40'
+            WHEN age > 40 THEN '40+'
+        END AS age_category
+    FROM customers
+)
+SELECT--считаем кол-во клиентов в каждой категории--
+    age_category,
+    COUNT(*) AS age_count
+FROM age_groups
+GROUP BY age_category;--группируем по категориям--
+
+
+SELECT
+    TO_CHAR(s.sale_date, 'YYYY-MM') AS date,--превращаем дату в формат год-месяц--
+    COUNT(DISTINCT s.customer_id) AS total_customers,--считаем уникальных клиентов совершивших покупку-
+    SUM(s.quantity * p.price) AS income--считаем общий доход за месяц--
+FROM sales s
+JOIN products p ON s.product_id = p.product_id--джоиним таблицы--
+GROUP BY TO_CHAR(s.sale_date, 'YYYY-MM')--группируем по дате--
+ORDER BY date;--сортируем по дате, будет идти от более раннего месяца--
+
+
+WITH first_sales AS (--формируем таблицу с первой бесплатной покупкой--
+    SELECT
+        s.customer_id,
+        s.sale_date,
+        s.sales_person_id,
+        ROW_NUMBER() OVER (
+            PARTITION BY s.customer_id 
+            ORDER BY s.sale_date, s.sales_id
+        ) AS rn
+    FROM sales s
+    JOIN products p ON s.product_id = p.product_id
+    WHERE p.price = 0
+)
+SELECT
+    c.first_name || ' ' || c.last_name AS customer,--объединяю имя и фамилию покупателя--
+    fs.sale_date,
+    e.first_name || ' ' || e.last_name AS seller--объединяю имя и фамилию продавца--
+FROM first_sales fs
+JOIN customers c ON fs.customer_id = c.customer_id
+JOIN employees e ON fs.sales_person_id = e.employee_id
+WHERE fs.rn = 1--берём только первую бесплатную покупку каждого клиента--
+ORDER BY c.customer_id;
