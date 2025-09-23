@@ -42,15 +42,15 @@ ORDER BY average_income ASC;--проводим сортировку по воз�
 --day_of_the_week_income.csv
 SELECT 
     e.first_name || ' ' || e.last_name AS seller,--объединяю имя и фамилию сотрудника в одно поле
-    TO_CHAR(s.sale_date, 'Day') AS day_of_week,--преобразуем дату в название дня недели
+    TO_CHAR(s.sale_date, 'FMday') AS day_of_week,--преобразуем дату в название дня недели
     FLOOR(SUM(s.quantity * p.price)) AS income--считаем доход и округляем в меньшую сторону
 FROM sales s
 JOIN employees e --джойним таблицы
-  ON s.sales_person_id = e.employee_id
+    ON s.sales_person_id = e.employee_id
 JOIN products p 
-  ON s.product_id = p.product_id
-GROUP BY e.employee_id, e.first_name, e.last_name, TO_CHAR(s.sale_date, 'Day'), EXTRACT(DOW FROM s.sale_date)--проводим группировку
-ORDER BY EXTRACT(DOW FROM s.sale_date), seller;--проводим сортировку по дню недели,а затем по имени
+    ON s.product_id = p.product_id
+GROUP BY e.employee_id, e.first_name, e.last_name, TO_CHAR(s.sale_date, 'FMday'), TO_CHAR(s.sale_date, 'ID')--проводим группировку
+ORDER BY TO_CHAR(s.sale_date, 'ID')::int, seller;--проводим сортировку по дню недели,а затем по имени
 
 --age_groups.csv
 WITH age_groups AS (--создаем таблицу и присваиваем каждому клиенту категорию возраста
