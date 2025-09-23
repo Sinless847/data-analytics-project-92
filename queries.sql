@@ -70,13 +70,13 @@ GROUP BY age_category;--группируем по категориям
 
 --customers_by_month.csv
 SELECT
-    TO_CHAR(s.sale_date, 'YYYY-MM') AS date,--превращаем дату в формат год-месяц
+    TO_CHAR(s.sale_date, 'YYYY-MM') AS selling_month,--превращаем дату в формат год-месяц
     COUNT(DISTINCT s.customer_id) AS total_customers,--считаем уникальных клиентов совершивших покупку
-    SUM(s.quantity * p.price) AS income--считаем общий доход за месяц
+    FLOOR(SUM(s.quantity * p.price)) AS income--считаем общий доход за месяц и производим округление в меньшую сторону
 FROM sales s
 JOIN products p ON s.product_id = p.product_id--джоиним таблицы
 GROUP BY TO_CHAR(s.sale_date, 'YYYY-MM')--группируем по дате
-ORDER BY date;--сортируем по дате, будет идти от более раннего месяца
+ORDER BY selling_month;--сортируем по дате, будет идти от более раннего месяца
 
 --special_offer.csv
 WITH first_sales AS (--формируем таблицу с первой бесплатной покупкой
