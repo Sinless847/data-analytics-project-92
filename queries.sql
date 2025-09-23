@@ -1,22 +1,23 @@
-SELECT COUNT(*) AS customers_count --подсчитывает общее количество записей в таблице customers и выводит это число с псевдонимом customers_count--
+--Напишите запрос, который считает общее количество покупателей из таблицы customers.
+SELECT COUNT(*) AS customers_count --подсчитывает общее количество записей в таблице customers и выводит это число с псевдонимом customers_count
 FROM customers;
 
-
+--top_10_total_income.csv
 SELECT 
-    e.first_name || ' ' || e.last_name AS seller, --объединяю имя и фамилию сотрудника в одно поле и даю псевданим--
-    COUNT(s.sales_id) AS operations,--считаю кол-во сделок--
-    FLOOR(SUM(s.quantity * p.price)) AS income--считаю доход--
+    e.first_name || ' ' || e.last_name AS seller, --объединяю имя и фамилию сотрудника в одно поле и даю псевданим
+    COUNT(s.sales_id) AS operations,--считаю кол-во сделок
+    FLOOR(SUM(s.quantity * p.price)) AS income--считаю доход
 FROM sales s
-JOIN employees e --джойним таблицы--
+JOIN employees e --джойним таблицы
   ON s.sales_person_id = e.employee_id
 JOIN products p 
   ON s.product_id = p.product_id
-GROUP BY e.employee_id, e.first_name, e.last_name --проводим группировку--
-ORDER BY income DESC--проводим сортировку по убыванию дохода--
-LIMIT 10;--берем только 10 лучших продавцов--
+GROUP BY e.employee_id, e.first_name, e.last_name --проводим группировку
+ORDER BY income DESC--проводим сортировку по убыванию дохода
+LIMIT 10;--берем только 10 лучших продавцов
 
-
-WITH seller_stats AS (--пишем подзапрос что бы посчитать статистику каждого продавца--
+--lowest_average_income.csv
+WITH seller_stats AS (--пишем подзапрос что бы посчитать статистику каждого продавца
     SELECT 
         e.first_name || ' ' || e.last_name AS seller,
         SUM(s.quantity * p.price) AS total_income,
@@ -27,7 +28,7 @@ WITH seller_stats AS (--пишем подзапрос что бы посчита
     JOIN products p ON s.product_id = p.product_id
     GROUP BY e.employee_id, e.first_name, e.last_name
 ),
-overall_avg AS (--пишем подзапрос что бы подсчитать средний доход на компанию--
+overall_avg AS (--пишем подзапрос что бы подсчитать средний доход
     SELECT SUM(total_income)::numeric / SUM(operations) AS overall_avg_income
     FROM seller_stats
 )
@@ -35,24 +36,24 @@ SELECT
     seller,
     FLOOR(avg_income_per_sale) AS average_income
 FROM seller_stats, overall_avg
-WHERE avg_income_per_sale < overall_avg_income--ставим фильтр что бы выбрать только тех продавцов у которых средний доход с сделки ниже среднего по компании--
-ORDER BY average_income ASC;--проводим сортировку по возрастанию--
+WHERE avg_income_per_sale < overall_avg_income--ставим фильтр что бы выбрать только тех продавцов у которых средний доход с сделки ниже среднего по компании
+ORDER BY average_income ASC;--проводим сортировку по возрастанию
 
-
+--day_of_the_week_income.csv
 SELECT 
-    e.first_name || ' ' || e.last_name AS seller,--объединяю имя и фамилию сотрудника в одно поле--
-    TO_CHAR(s.sale_date, 'Day') AS day_of_week,--преобразуем дату в название дня недели--
-    FLOOR(SUM(s.quantity * p.price)) AS income--считаем доход и округляем в меньшую сторону--
+    e.first_name || ' ' || e.last_name AS seller,--объединяю имя и фамилию сотрудника в одно поле
+    TO_CHAR(s.sale_date, 'Day') AS day_of_week,--преобразуем дату в название дня недели
+    FLOOR(SUM(s.quantity * p.price)) AS income--считаем доход и округляем в меньшую сторону
 FROM sales s
-JOIN employees e --джойним таблицы--
+JOIN employees e --джойним таблицы
   ON s.sales_person_id = e.employee_id
 JOIN products p 
   ON s.product_id = p.product_id
-GROUP BY e.employee_id, e.first_name, e.last_name, TO_CHAR(s.sale_date, 'Day'), EXTRACT(DOW FROM s.sale_date)--проводим группировку--
-ORDER BY EXTRACT(DOW FROM s.sale_date), seller;--проводим сортировку по дню недели,а затем по имени--
+GROUP BY e.employee_id, e.first_name, e.last_name, TO_CHAR(s.sale_date, 'Day'), EXTRACT(DOW FROM s.sale_date)--проводим группировку
+ORDER BY EXTRACT(DOW FROM s.sale_date), seller;--проводим сортировку по дню недели,а затем по имени
 
-
-WITH age_groups AS (--создаем таблицу и присваиваем каждому клиенту категорию возраста--
+--age_groups.csv
+WITH age_groups AS (--создаем таблицу и присваиваем каждому клиенту категорию возраста
     SELECT
         CASE
             WHEN age BETWEEN 16 AND 25 THEN '16-25'
@@ -61,24 +62,24 @@ WITH age_groups AS (--создаем таблицу и присваиваем к
         END AS age_category
     FROM customers
 )
-SELECT--считаем кол-во клиентов в каждой категории--
+SELECT--считаем кол-во клиентов в каждой категории
     age_category,
     COUNT(*) AS age_count
 FROM age_groups
-GROUP BY age_category;--группируем по категориям--
+GROUP BY age_category;--группируем по категориям
 
-
+--customers_by_month.csv
 SELECT
-    TO_CHAR(s.sale_date, 'YYYY-MM') AS date,--превращаем дату в формат год-месяц--
-    COUNT(DISTINCT s.customer_id) AS total_customers,--считаем уникальных клиентов совершивших покупку-
-    SUM(s.quantity * p.price) AS income--считаем общий доход за месяц--
+    TO_CHAR(s.sale_date, 'YYYY-MM') AS date,--превращаем дату в формат год-месяц
+    COUNT(DISTINCT s.customer_id) AS total_customers,--считаем уникальных клиентов совершивших покупку
+    SUM(s.quantity * p.price) AS income--считаем общий доход за месяц
 FROM sales s
-JOIN products p ON s.product_id = p.product_id--джоиним таблицы--
-GROUP BY TO_CHAR(s.sale_date, 'YYYY-MM')--группируем по дате--
-ORDER BY date;--сортируем по дате, будет идти от более раннего месяца--
+JOIN products p ON s.product_id = p.product_id--джоиним таблицы
+GROUP BY TO_CHAR(s.sale_date, 'YYYY-MM')--группируем по дате
+ORDER BY date;--сортируем по дате, будет идти от более раннего месяца
 
-
-WITH first_sales AS (--формируем таблицу с первой бесплатной покупкой--
+--special_offer.csv
+WITH first_sales AS (--формируем таблицу с первой бесплатной покупкой
     SELECT
         s.customer_id,
         s.sale_date,
@@ -92,11 +93,11 @@ WITH first_sales AS (--формируем таблицу с первой бес�
     WHERE p.price = 0
 )
 SELECT
-    c.first_name || ' ' || c.last_name AS customer,--объединяю имя и фамилию покупателя--
+    c.first_name || ' ' || c.last_name AS customer,--объединяю имя и фамилию покупателя
     fs.sale_date,
-    e.first_name || ' ' || e.last_name AS seller--объединяю имя и фамилию продавца--
+    e.first_name || ' ' || e.last_name AS seller--объединяю имя и фамилию продавца
 FROM first_sales fs
 JOIN customers c ON fs.customer_id = c.customer_id
 JOIN employees e ON fs.sales_person_id = e.employee_id
-WHERE fs.rn = 1--берём только первую бесплатную покупку каждого клиента--
+WHERE fs.rn = 1--берём только первую бесплатную покупку каждого клиента
 ORDER BY c.customer_id;
