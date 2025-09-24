@@ -1,8 +1,6 @@
--- Напишите запрос, который считает общее количество покупателей
-SELECT
-    COUNT(*) AS customers_count
-FROM
-    customers;
+-- customers_count.csv
+SELECT COUNT(*) AS customers_count
+FROM customers;
 
 -- top_10_total_income.csv
 SELECT
@@ -11,10 +9,12 @@ SELECT
     FLOOR(SUM(s.quantity * p.price)) AS income
 FROM
     sales AS s
-    JOIN employees AS e
-        ON s.sales_person_id = e.employee_id
-    JOIN products AS p
-        ON s.product_id = p.product_id
+JOIN
+    employees AS e
+    ON s.sales_person_id = e.employee_id
+JOIN
+    products AS p
+    ON s.product_id = p.product_id
 GROUP BY
     e.employee_id,
     e.first_name,
@@ -29,13 +29,16 @@ WITH seller_stats AS (
         (e.first_name || ' ' || e.last_name) AS seller,
         SUM(s.quantity * p.price) AS total_income,
         COUNT(s.sales_id) AS operations,
-        SUM(s.quantity * p.price)::numeric / NULLIF(COUNT(s.sales_id), 0) AS avg_income_per_sale
+        SUM(s.quantity * p.price)::numeric
+            / NULLIF(COUNT(s.sales_id), 0) AS avg_income_per_sale
     FROM
         sales AS s
-        JOIN employees AS e
-            ON s.sales_person_id = e.employee_id
-        JOIN products AS p
-            ON s.product_id = p.product_id
+    JOIN
+        employees AS e
+        ON s.sales_person_id = e.employee_id
+    JOIN
+        products AS p
+        ON s.product_id = p.product_id
     GROUP BY
         e.employee_id,
         e.first_name,
@@ -50,11 +53,12 @@ overall_avg AS (
 )
 
 SELECT
-    seller_stats.seller AS seller,
+    seller_stats.seller,
     FLOOR(seller_stats.avg_income_per_sale) AS average_income
 FROM
     seller_stats
-    CROSS JOIN overall_avg
+CROSS JOIN
+    overall_avg
 WHERE
     seller_stats.avg_income_per_sale < overall_avg.overall_avg_income
 ORDER BY
@@ -67,10 +71,12 @@ SELECT
     FLOOR(SUM(s.quantity * p.price)) AS income
 FROM
     sales AS s
-    JOIN employees AS e
-        ON s.sales_person_id = e.employee_id
-    JOIN products AS p
-        ON s.product_id = p.product_id
+JOIN
+    employees AS e
+    ON s.sales_person_id = e.employee_id
+JOIN
+    products AS p
+    ON s.product_id = p.product_id
 GROUP BY
     e.employee_id,
     e.first_name,
@@ -109,8 +115,9 @@ SELECT
     FLOOR(SUM(s.quantity * p.price)) AS income
 FROM
     sales AS s
-    JOIN products AS p
-        ON s.product_id = p.product_id
+JOIN
+    products AS p
+    ON s.product_id = p.product_id
 GROUP BY
     TO_CHAR(s.sale_date, 'YYYY-MM')
 ORDER BY
@@ -128,8 +135,9 @@ WITH first_sales AS (
         ) AS rn
     FROM
         sales AS s
-        JOIN products AS p
-            ON s.product_id = p.product_id
+    JOIN
+        products AS p
+        ON s.product_id = p.product_id
     WHERE
         p.price = 0
 )
@@ -140,10 +148,12 @@ SELECT
     (e.first_name || ' ' || e.last_name) AS seller
 FROM
     first_sales AS fs
-    JOIN customers AS c
-        ON fs.customer_id = c.customer_id
-    JOIN employees AS e
-        ON fs.sales_person_id = e.employee_id
+JOIN
+    customers AS c
+    ON fs.customer_id = c.customer_id
+JOIN
+    employees AS e
+    ON fs.sales_person_id = e.employee_id
 WHERE
     fs.rn = 1
 ORDER BY
