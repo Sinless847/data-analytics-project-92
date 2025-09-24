@@ -1,8 +1,9 @@
--- Напишите запрос, который считает общее количество покупателей из таблицы customers.
+-- Общее количество покупателей
 SELECT
     COUNT(*) AS customers_count
 FROM
-    customers;
+    customers AS c;
+
 
 -- top_10_total_income.csv
 SELECT
@@ -22,6 +23,7 @@ GROUP BY
 ORDER BY
     income DESC
 LIMIT 10;
+
 
 -- lowest_average_income.csv
 WITH seller_stats AS (
@@ -44,21 +46,22 @@ WITH seller_stats AS (
 
 overall_avg AS (
     SELECT
-        SUM(total_income)::numeric / SUM(operations) AS overall_avg_income
+        SUM(seller_stats.total_income)::numeric / SUM(seller_stats.operations) AS overall_avg_income
     FROM
         seller_stats
 )
 
 SELECT
-    seller,
-    FLOOR(avg_income_per_sale) AS average_income
+    seller_stats.seller,
+    FLOOR(seller_stats.avg_income_per_sale) AS average_income
 FROM
     seller_stats
     CROSS JOIN overall_avg
 WHERE
-    avg_income_per_sale < overall_avg_income
+    seller_stats.avg_income_per_sale < overall_avg.overall_avg_income
 ORDER BY
     average_income ASC;
+
 
 -- day_of_the_week_income.csv
 SELECT
@@ -81,17 +84,19 @@ ORDER BY
     TO_CHAR(s.sale_date, 'ID')::int,
     seller;
 
+
 -- age_groups.csv
 WITH age_groups AS (
     SELECT
         CASE
-            WHEN age BETWEEN 16 AND 25 THEN '16-25'
-            WHEN age BETWEEN 26 AND 40 THEN '26-40'
-            WHEN age > 40 THEN '40+'
+            WHEN c.age BETWEEN 16 AND 25 THEN '16-25'
+            WHEN c.age BETWEEN 26 AND 40 THEN '26-40'
+            WHEN c.age > 40 THEN '40+'
         END AS age_category
     FROM
         customers AS c
 )
+
 SELECT
     age_category,
     COUNT(*) AS age_count
@@ -100,6 +105,7 @@ FROM
 GROUP BY
     age_category;
 
+
 -- customers_by_month.csv
 SELECT
     TO_CHAR(s.sale_date, 'YYYY-MM') AS selling_month,
@@ -107,13 +113,13 @@ SELECT
     FLOOR(SUM(s.quantity * p.price)) AS income
 FROM
     sales AS s
-JOIN
-    products AS p
-    ON s.product_id = p.product_id
+    JOIN products AS p
+        ON s.product_id = p.product_id
 GROUP BY
     TO_CHAR(s.sale_date, 'YYYY-MM')
 ORDER BY
     selling_month;
+
 
 -- special_offer.csv
 WITH first_sales AS (
@@ -127,24 +133,22 @@ WITH first_sales AS (
         ) AS rn
     FROM
         sales AS s
-    JOIN
-        products AS p
-        ON s.product_id = p.product_id
+        JOIN products AS p
+            ON s.product_id = p.product_id
     WHERE
         p.price = 0
 )
+
 SELECT
     c.first_name || ' ' || c.last_name AS customer,
     fs.sale_date,
     e.first_name || ' ' || e.last_name AS seller
 FROM
     first_sales AS fs
-JOIN
-    customers AS c
-    ON fs.customer_id = c.customer_id
-JOIN
-    employees AS e
-    ON fs.sales_person_id = e.employee_id
+    JOIN customers AS c
+        ON fs.customer_id = c.customer_id
+    JOIN employees AS e
+        ON fs.sales_person_id = e.employee_id
 WHERE
     fs.rn = 1
 ORDER BY
