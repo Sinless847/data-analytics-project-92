@@ -1,8 +1,40 @@
--- Общее количество покупателей
+-- top_10_popular_products.csv
 SELECT
-    COUNT(*) AS customers_count
+    p.product_name,
+    COUNT(s.sales_id) AS operations
 FROM
-    customers;
+    sales AS s
+    JOIN products AS p
+        ON s.product_id = p.product_id
+GROUP BY
+    p.product_id,
+    p.product_name
+ORDER BY
+    operations DESC
+LIMIT 10;
+
+
+-- top_10_profitable_products.csv
+SELECT
+    p.product_name,
+    SUM(s.quantity * p.price) AS income
+FROM
+    sales AS s
+    JOIN products AS p
+        ON s.product_id = p.product_id
+GROUP BY
+    p.product_id,
+    p.product_name
+ORDER BY
+    income DESC
+LIMIT 10;
+
+
+-- customers_count.csv
+SELECT
+    COUNT(DISTINCT c.customer_id) AS customers_count
+FROM
+    customers AS c;
 
 
 -- top_10_total_income.csv
@@ -26,12 +58,11 @@ LIMIT 10;
 
 
 -- lowest_average_income.csv
-WITH seller_stats AS (
+WITH seller_avg AS (
     SELECT
+        e.employee_id,
         e.first_name || ' ' || e.last_name AS seller,
-        SUM(s.quantity * p.price) AS total_income,
-        COUNT(s.sales_id) AS operations,
-        SUM(s.quantity * p.price) / COUNT(s.sales_id) AS avg_income_per_sale
+        AVG(s.quantity * p.price) AS avg_income_per_sale
     FROM
         sales AS s
         JOIN employees AS e
@@ -42,115 +73,77 @@ WITH seller_stats AS (
         e.employee_id,
         e.first_name,
         e.last_name
-),
-
-overall_avg AS (
-    SELECT
-        SUM(seller_stats.total_income)::numeric / SUM(seller_stats.operations)
-        AS overall_avg_income
-    FROM
-        seller_stats
 )
-
 SELECT
-    seller_stats.seller,
-    FLOOR(seller_stats.avg_income_per_sale) AS average_income
+    seller,
+    avg_income_per_sale
 FROM
-    seller_stats
-    CROSS JOIN overall_avg
-WHERE
-    seller_stats.avg_income_per_sale < overall_avg.overall_avg_income
+    seller_avg
 ORDER BY
-    average_income ASC;
+    avg_income_per_sale
+LIMIT 10;
 
 
 -- day_of_the_week_income.csv
 SELECT
-    e.first_name || ' ' || e.last_name AS seller,
-    TO_CHAR(s.sale_date, 'FMday') AS day_of_week,
-    FLOOR(SUM(s.quantity * p.price)) AS income
+    EXTRACT(DOW FROM s.sale_date) AS day_of_week,
+    SUM(s.quantity * p.price) AS total_income
 FROM
     sales AS s
-    JOIN employees AS e
-        ON s.sales_person_id = e.employee_id
     JOIN products AS p
         ON s.product_id = p.product_id
 GROUP BY
-    e.employee_id,
-    e.first_name,
-    e.last_name,
-    TO_CHAR(s.sale_date, 'FMday'),
-    TO_CHAR(s.sale_date, 'ID')
+    day_of_week
 ORDER BY
-    TO_CHAR(s.sale_date, 'ID')::int,
-    seller;
+    total_income DESC;
 
 
 -- age_groups.csv
-WITH age_groups AS (
-    SELECT
-        CASE
-            WHEN age BETWEEN 16 AND 25 THEN '16-25'
-            WHEN age BETWEEN 26 AND 40 THEN '26-40'
-            WHEN age > 40 THEN '40+'
-        END AS age_category
-    FROM
-        customers
-)
-
 SELECT
-    age_category,
-    COUNT(*) AS age_count
+    CASE
+        WHEN c.age < 20 THEN 'under_20'
+        WHEN c.age BETWEEN 20 AND 29 THEN '20_29'
+        WHEN c.age BETWEEN 30 AND 39 THEN '30_39'
+        ELSE '40_and_over'
+    END AS age_group,
+    COUNT(c.customer_id) AS customers_count
 FROM
-    age_groups
+    customers AS c
 GROUP BY
-    age_category;
+    age_group
+ORDER BY
+    age_group;
 
 
 -- customers_by_month.csv
 SELECT
-    TO_CHAR(s.sale_date, 'YYYY-MM') AS selling_month,
-    COUNT(DISTINCT s.customer_id) AS total_customers,
-    FLOOR(SUM(s.quantity * p.price)) AS income
+    EXTRACT(MONTH FROM c.registered_at) AS month,
+    COUNT(c.customer_id) AS customers_count
 FROM
-    sales AS s
-    JOIN products AS p
-        ON s.product_id = p.product_id
+    customers AS c
 GROUP BY
-    TO_CHAR(s.sale_date, 'YYYY-MM')
+    month
 ORDER BY
-    selling_month;
+    month;
 
 
 -- special_offer.csv
-WITH first_sales AS (
-    SELECT
-        s.customer_id,
-        s.sale_date,
-        s.sales_person_id,
-        ROW_NUMBER() OVER (
-            PARTITION BY s.customer_id
-            ORDER BY s.sale_date, s.sales_id
-        ) AS rn
-    FROM
-        sales AS s
-        JOIN products AS p
-            ON s.product_id = p.product_id
-    WHERE
-        p.price = 0
-)
-
 SELECT
+    c.customer_id,
     c.first_name || ' ' || c.last_name AS customer,
-    fs.sale_date,
-    e.first_name || ' ' || e.last_name AS seller
+    SUM(s.quantity * p.price) AS total_income
 FROM
-    first_sales AS fs
+    sales AS s
     JOIN customers AS c
-        ON fs.customer_id = c.customer_id
-    JOIN employees AS e
-        ON fs.sales_person_id = e.employee_id
+        ON s.customer_id = c.customer_id
+    JOIN products AS p
+        ON s.product_id = p.product_id
 WHERE
-    fs.rn = 1
+    s.sale_date >= CURRENT_DATE - INTERVAL '30 days'
+GROUP BY
+    c.customer_id,
+    c.first_name,
+    c.last_name
 ORDER BY
-    c.customer_id;
+    total_income DESC
+LIMIT 10;
