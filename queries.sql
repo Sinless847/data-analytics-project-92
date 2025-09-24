@@ -1,4 +1,4 @@
--- Общее количество покупателей
+-- top_10_popular_products.csv
 SELECT
     COUNT(*) AS customers_count
 FROM
