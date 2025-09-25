@@ -1,155 +1,113 @@
--- Общее количество покупателей
-select
-	COUNT(*) as customers_count
-from
-	customers as c;
--- top_10_total_income.csv
-select
-	e.first_name || ' ' || e.last_name as seller,
-	COUNT(s.sales_id) as operations,
-	FLOOR(SUM(s.quantity * p.price)) as income
-from
-	sales as s
-join employees as e
-        on
-	s.sales_person_id = e.employee_id
-join products as p
-        on
-	s.product_id = p.product_id
-group by
-	e.employee_id,
-	e.first_name,
-	e.last_name
-order by
-	income desc
-limit 10;
--- lowest_average_income.csv
-with seller_stats as (
-select
-	e.first_name || ' ' || e.last_name as seller,
-	SUM(s.quantity * p.price) as total_income,
-	COUNT(s.sales_id) as operations,
-	SUM(s.quantity * p.price) / COUNT(s.sales_id) as avg_income_per_sale
-from
-	sales as s
-join employees as e
-            on
-	s.sales_person_id = e.employee_id
-join products as p
-            on
-	s.product_id = p.product_id
-group by
-	e.employee_id,
-	e.first_name,
-	e.last_name
+-- Напишите запрос, который считает общее количество покупателей из таблицы customers.
+SELECT COUNT(*) AS customers_count
+FROM
+    customers;
+
+--top_10_total_income.csv
+SELECT
+    e.first_name || ' ' || e.last_name AS seller,
+    COUNT(s.sales_id) AS operations,
+    FLOOR(SUM(s.quantity * p.price)) AS income
+FROM sales AS s
+INNER JOIN employees AS e
+    ON s.sales_person_id = e.employee_id
+INNER JOIN products AS p
+    ON s.product_id = p.product_id
+GROUP BY e.employee_id, e.first_name, e.last_name
+ORDER BY income DESC
+LIMIT 10;
+
+--lowest_average_income.csv
+WITH seller_stats AS (
+    SELECT
+        e.first_name || ' ' || e.last_name AS seller,
+        SUM(s.quantity * p.price) AS total_income,
+        COUNT(s.sales_id) AS operations,
+        SUM(s.quantity * p.price) / COUNT(s.sales_id) AS avg_income_per_sale
+    FROM sales AS s
+    INNER JOIN employees AS e ON s.sales_person_id = e.employee_id
+    INNER JOIN products AS p ON s.product_id = p.product_id
+    GROUP BY e.employee_id, e.first_name, e.last_name
 ),
 
-overall_avg as (
-select
-	SUM(seller_stats.total_income)::numeric / SUM(seller_stats.operations) as overall_avg_income
-from
-	seller_stats
+overall_avg AS (
+    SELECT SUM(total_income)::numeric / SUM(operations) AS overall_avg_income
+    FROM seller_stats
 )
 
-select
-	seller_stats.seller,
-	FLOOR(seller_stats.avg_income_per_sale) as average_income
-from
-	seller_stats
-cross join overall_avg
-where
-	seller_stats.avg_income_per_sale < overall_avg.overall_avg_income
-order by
-	average_income asc;
--- day_of_the_week_income.csv
-select
-	e.first_name || ' ' || e.last_name as seller,
-	TO_CHAR(s.sale_date, 'FMday') as day_of_week,
-	FLOOR(SUM(s.quantity * p.price)) as income
-from
-	sales as s
-join employees as e
-        on
-	s.sales_person_id = e.employee_id
-join products as p
-        on
-	s.product_id = p.product_id
-group by
-	e.employee_id,
-	e.first_name,
-	e.last_name,
-	TO_CHAR(s.sale_date, 'FMday'),
-	TO_CHAR(s.sale_date, 'ID')
-order by
-	TO_CHAR(s.sale_date, 'ID')::int,
-	seller;
--- age_groups.csv
-with age_groups as (
-select
-	case
-		when c.age between 16 and 25 then '16-25'
-		when c.age between 26 and 40 then '26-40'
-		when c.age > 40 then '40+'
-	end as age_category
-from
-	customers as c
+SELECT
+    seller,
+    FLOOR(avg_income_per_sale) AS average_income
+FROM seller_stats, overall_avg
+WHERE avg_income_per_sale < overall_avg_income
+ORDER BY average_income ASC;
+
+--day_of_the_week_income.csv
+SELECT
+    e.first_name || ' ' || e.last_name AS seller,
+    TO_CHAR(s.sale_date, 'FMday') AS day_of_week,
+    FLOOR(SUM(s.quantity * p.price)) AS income
+FROM sales AS s
+INNER JOIN employees AS e
+    ON s.sales_person_id = e.employee_id
+INNER JOIN products AS p
+    ON s.product_id = p.product_id
+GROUP BY
+    e.employee_id,
+    e.first_name,
+    e.last_name,
+    TO_CHAR(s.sale_date, 'FMday'),
+    TO_CHAR(s.sale_date, 'ID')
+ORDER BY TO_CHAR(s.sale_date, 'ID')::int, seller;
+
+--age_groups.csv
+WITH age_groups AS (
+    SELECT
+        CASE
+            WHEN age BETWEEN 16 AND 25 THEN '16-25'
+            WHEN age BETWEEN 26 AND 40 THEN '26-40'
+            WHEN age > 40 THEN '40+'
+        END AS age_category
+    FROM customers
 )
 
-select
-	age_category,
-	COUNT(*) as age_count
-from
-	age_groups
-group by
-	age_category;
--- customers_by_month.csv
-select
-	TO_CHAR(s.sale_date, 'YYYY-MM') as selling_month,
-	COUNT(distinct s.customer_id) as total_customers,
-	FLOOR(SUM(s.quantity * p.price)) as income
-from
-	sales as s
-join products as p
-        on
-	s.product_id = p.product_id
-group by
-	TO_CHAR(s.sale_date, 'YYYY-MM')
-order by
-	selling_month;
--- special_offer.csv
-with first_sales as (
-select
-	s.customer_id,
-	s.sale_date,
-	s.sales_person_id,
-	row_number() over (
-            partition by s.customer_id
-order by
-	s.sale_date,
-	s.sales_id
-        ) as rn
-from
-	sales as s
-join products as p
-            on
-	s.product_id = p.product_id
-where
-	p.price = 0
+SELECT
+    age_category,
+    COUNT(*) AS age_count
+FROM age_groups
+GROUP BY age_category;
+
+--customers_by_month.csv
+SELECT
+    TO_CHAR(s.sale_date, 'YYYY-MM') AS selling_month,
+    COUNT(DISTINCT s.customer_id) AS total_customers,
+    FLOOR(SUM(s.quantity * p.price)) AS income
+FROM sales AS s
+INNER JOIN products AS p ON s.product_id = p.product_id
+GROUP BY TO_CHAR(s.sale_date, 'YYYY-MM')
+ORDER BY selling_month;
+
+--special_offer.csv
+WITH first_sales AS (
+    SELECT
+        s.customer_id,
+        s.sale_date,
+        s.sales_person_id,
+        ROW_NUMBER() OVER (
+            PARTITION BY s.customer_id
+            ORDER BY s.sale_date, s.sales_id
+        ) AS rn
+    FROM sales AS s
+    INNER JOIN products AS p ON s.product_id = p.product_id
+    WHERE p.price = 0
 )
 
-select
-	c.first_name || ' ' || c.last_name as customer,
-	fs.sale_date,
-	e.first_name || ' ' || e.last_name as seller
-from
-	first_sales as fs
-join customers as c
-        on
-	fs.customer_id = c.customer_id
-join employees as e
-        on
-	fs.sales_person_id = e.employee_id
-where
-	fs.rn = 1
-order by
-	c.customer_id;
+SELECT
+    fs.sale_date,
+    c.first_name || ' ' || c.last_name AS customer,
+    e.first_name || ' ' || e.last_name AS seller
+FROM first_sales AS fs
+INNER JOIN customers AS c ON fs.customer_id = c.customer_id
+INNER JOIN employees AS e ON fs.sales_person_id = e.employee_id
+WHERE fs.rn = 1
+ORDER BY c.customer_id;
