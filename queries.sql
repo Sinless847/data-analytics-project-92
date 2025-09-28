@@ -27,8 +27,6 @@ INNER JOIN products AS p
     ON s.product_id = p.product_id
 GROUP BY
     e.employee_id,
-    e.first_name,
-    e.last_name,
     TO_CHAR(s.sale_date, 'FMday'),
     TO_CHAR(s.sale_date, 'ID')
 ORDER BY TO_CHAR(s.sale_date, 'ID')::int, seller;
