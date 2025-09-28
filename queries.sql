@@ -31,21 +31,20 @@ GROUP BY
     TO_CHAR(s.sale_date, 'ID')
 ORDER BY TO_CHAR(s.sale_date, 'ID')::int, seller;
 --age_groups.csv
-WITH age_groups AS (
-    SELECT
-        CASE
-            WHEN age BETWEEN 16 AND 25 THEN '16-25'
-            WHEN age BETWEEN 26 AND 40 THEN '26-40'
-            WHEN age > 40 THEN '40+'
-        END AS age_category
-    FROM customers
-)
-
 SELECT
-    age_category,
+    CASE
+        WHEN age BETWEEN 16 AND 25 THEN '16-25'
+        WHEN age BETWEEN 26 AND 40 THEN '26-40'
+        WHEN age > 40 THEN '40+'
+    END AS age_category,
     COUNT(*) AS age_count
-FROM age_groups
-GROUP BY age_category;
+FROM customers
+GROUP BY
+    CASE
+        WHEN age BETWEEN 16 AND 25 THEN '16-25'
+        WHEN age BETWEEN 26 AND 40 THEN '26-40'
+        WHEN age > 40 THEN '40+'
+    END;
 --customers_by_month.csv
 SELECT
     TO_CHAR(s.sale_date, 'YYYY-MM') AS selling_month,
